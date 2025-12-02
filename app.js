@@ -1,6 +1,7 @@
 const express = require('express');
 const { engine } = require('express-handlebars');
 const { Sequelize, DataTypes } = require('sequelize');
+const session = require('express-session');
 const path = require('path');
 
 const app = express();
@@ -10,6 +11,13 @@ const PORT = 3000;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('public'));
+
+// Session middleware
+app.use(session({
+    secret: 'quotebox-secret-key-2024',
+    resave: false,
+    saveUninitialized: false
+}));
 
 // Handlebars setup
 app.engine('hbs', engine({ 
@@ -34,6 +42,15 @@ sequelize.authenticate()
     .then(() => console.log('Database connected successfully'))
     .catch(err => console.error('Unable to connect to database:', err));
 
+// Define User model
+const User = sequelize.define('User', {
+    username: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true
+    }
+});
+
 // Define Quote model
 const Quote = sequelize.define('Quote', {
     quoteText: {
@@ -54,20 +71,75 @@ const Quote = sequelize.define('Quote', {
     }
 });
 
-// Sync database
-sequelize.sync();
+// Set up relationships
+Quote.belongsTo(User);
+User.hasMany(Quote);
+
+// Sync database (alter will update existing tables)
+sequelize.sync({ alter: true });
 
 // ==================== ROUTES ====================
 
-// HOME PAGE - Display all quotes
-app.get('/', async (req, res) => {
+// Middleware to check if user is logged in
+function requireLogin(req, res, next) {
+    if (!req.session.userId) {
+        return res.redirect('/');
+    }
+    next();
+}
+
+// LANDING PAGE
+app.get('/', (req, res) => {
+    // If already logged in, redirect to home
+    if (req.session.userId) {
+        return res.redirect('/home');
+    }
+    res.render('landing', { 
+        title: 'Welcome',
+        layout: false  // No nav bar on landing page
+    });
+});
+
+// LOGIN/CREATE USER
+app.post('/login', async (req, res) => {
+    try {
+        const { username } = req.body;
+        
+        // Find or create user
+        let user = await User.findOne({ where: { username: username } });
+        
+        if (!user) {
+            user = await User.create({ username: username });
+        }
+        
+        // Set session
+        req.session.userId = user.id;
+        req.session.username = user.username;
+        
+        res.redirect('/home');
+    } catch (error) {
+        console.error('Error logging in:', error);
+        res.status(500).send('Error logging in');
+    }
+});
+
+// LOGOUT
+app.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/');
+});
+
+// HOME PAGE - Display all quotes for logged-in user
+app.get('/home', requireLogin, async (req, res) => {
     try {
         const quotes = await Quote.findAll({
+            where: { UserId: req.session.userId },
             order: [['createdAt', 'DESC']]
         });
         res.render('home', { 
             title: 'Home',
-            quotes: quotes
+            quotes: quotes,
+            username: req.session.username
         });
     } catch (error) {
         console.error('Error fetching quotes:', error);
@@ -76,14 +148,15 @@ app.get('/', async (req, res) => {
 });
 
 // ADD QUOTE PAGE - Show the form
-app.get('/add-quote', (req, res) => {
+app.get('/add-quote', requireLogin, (req, res) => {
     res.render('add-quote', { 
-        title: 'Add New Quote'
+        title: 'Add New Quote',
+        username: req.session.username
     });
 });
 
 // ADD QUOTE - Process the form
-app.post('/add-quote', async (req, res) => {
+app.post('/add-quote', requireLogin, async (req, res) => {
     try {
         const { quoteText, personName, location, date } = req.body;
         
@@ -91,10 +164,11 @@ app.post('/add-quote', async (req, res) => {
             quoteText: quoteText,
             personName: personName,
             location: location || null,
-            date: date || null
+            date: date || null,
+            UserId: req.session.userId
         });
         
-        res.redirect('/');
+        res.redirect('/home');
     } catch (error) {
         console.error('Error creating quote:', error);
         res.status(500).send('Error adding quote');
@@ -102,12 +176,15 @@ app.post('/add-quote', async (req, res) => {
 });
 
 // DELETE QUOTE
-app.post('/quotes/:id/delete', async (req, res) => {
+app.post('/quotes/:id/delete', requireLogin, async (req, res) => {
     try {
         await Quote.destroy({
-            where: { id: req.params.id }
+            where: { 
+                id: req.params.id,
+                UserId: req.session.userId  // Only delete if it belongs to this user
+            }
         });
-        res.redirect('/');
+        res.redirect('/home');
     } catch (error) {
         console.error('Error deleting quote:', error);
         res.status(500).send('Error deleting quote');
@@ -115,15 +192,21 @@ app.post('/quotes/:id/delete', async (req, res) => {
 });
 
 // EDIT QUOTE PAGE - Show edit form
-app.get('/quotes/:id/edit', async (req, res) => {
+app.get('/quotes/:id/edit', requireLogin, async (req, res) => {
     try {
-        const quote = await Quote.findByPk(req.params.id);
+        const quote = await Quote.findOne({
+            where: { 
+                id: req.params.id,
+                UserId: req.session.userId
+            }
+        });
         if (!quote) {
             return res.status(404).send('Quote not found');
         }
         res.render('edit-quote', { 
             title: 'Edit Quote',
-            quote: quote
+            quote: quote,
+            username: req.session.username
         });
     } catch (error) {
         console.error('Error fetching quote:', error);
@@ -132,7 +215,7 @@ app.get('/quotes/:id/edit', async (req, res) => {
 });
 
 // EDIT QUOTE - Process the edit
-app.post('/quotes/:id/edit', async (req, res) => {
+app.post('/quotes/:id/edit', requireLogin, async (req, res) => {
     try {
         const { quoteText, personName, location, date } = req.body;
         
@@ -142,23 +225,29 @@ app.post('/quotes/:id/edit', async (req, res) => {
             location: location || null,
             date: date || null
         }, {
-            where: { id: req.params.id }
+            where: { 
+                id: req.params.id,
+                UserId: req.session.userId
+            }
         });
         
-        res.redirect('/');
+        res.redirect('/home');
     } catch (error) {
         console.error('Error updating quote:', error);
         res.status(500).send('Error updating quote');
     }
 });
 
-// STATS PAGE - Show visualizations
-app.get('/stats', async (req, res) => {
+// STATS PAGE - Show visualizations for user's quotes
+app.get('/stats', requireLogin, async (req, res) => {
     try {
-        const quotes = await Quote.findAll();
+        const quotes = await Quote.findAll({
+            where: { UserId: req.session.userId }
+        });
         res.render('stats', { 
             title: 'Statistics',
-            quotesJSON: JSON.stringify(quotes)
+            quotesJSON: JSON.stringify(quotes),
+            username: req.session.username
         });
     } catch (error) {
         console.error('Error fetching stats:', error);
@@ -166,23 +255,27 @@ app.get('/stats', async (req, res) => {
     }
 });
 
-// GAME PAGE - Quiz mode
-app.get('/game', async (req, res) => {
+// GAME PAGE - Quiz mode for user's quotes
+app.get('/game', requireLogin, async (req, res) => {
     try {
-        const quotes = await Quote.findAll();
+        const quotes = await Quote.findAll({
+            where: { UserId: req.session.userId }
+        });
         
         if (quotes.length < 2) {
             return res.render('game', { 
                 title: 'Quiz Game',
                 error: 'You need at least 2 quotes to play the game!',
-                quotes: []
+                quotes: [],
+                username: req.session.username
             });
         }
         
         res.render('game', { 
             title: 'Quiz Game',
             quotesJSON: JSON.stringify(quotes),
-            error: null
+            error: null,
+            username: req.session.username
         });
     } catch (error) {
         console.error('Error loading game:', error);

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Quotebox</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        .landing-container {
+            max-width: 500px;
+            width: 100%;
+            padding: 0 2rem;
+        }
+        
+        .landing-card {
+            background: white;
+            border-radius: 8px;
+            padding: 3rem;
+            border: 1px solid #e5e5e5;
+            text-align: center;
+        }
+        
+        .landing-card h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+        }
+        
+        .landing-card > p {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+        }
+        
+        .landing-form {
+            margin: 0;
+        }
+        
+        .landing-form .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        
+        .landing-note {
+            margin-top: 1.5rem;
+            color: #999;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-container">
+        <div class="landing-card">
+            <h1>📦 Welcome to Quotebox</h1>
+            <p>Your digital scrapbook for life's funniest moments</p>
+            
+            <form action="/login" method="POST" class="landing-form">
+                <div class="form-group">
+                    <label for="username">Enter your name to continue</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Your name"
+                        required
+                        autofocus
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary btn-large">Enter My Collection →</button>
+            </form>
+            
+            <p class="landing-note">Don't have a collection? One will be created for you!</p>
+        </div>
+    </div>
+</body>
+</html>

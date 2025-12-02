@@ -1,0 +1,51 @@
+<div class="container">
+    <div class="page-header">
+        <h1>✨ Add New Quote</h1>
+        <a href="/" class="btn btn-secondary">← Back to Quotes</a>
+    </div>
+
+    <form action="/add-quote" method="POST" class="quote-form">
+        <div class="form-group">
+            <label for="quoteText">Quote *</label>
+            <textarea 
+                id="quoteText" 
+                name="quoteText" 
+                rows="4" 
+                required
+                placeholder="Enter the funny quote here..."
+            ></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="personName">Who said it? *</label>
+            <input 
+                type="text" 
+                id="personName" 
+                name="personName" 
+                required
+                placeholder="Person's name"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="location">Where did this happen?</label>
+            <input 
+                type="text" 
+                id="location" 
+                name="location"
+                placeholder="Location (optional)"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="date">Date</label>
+            <input 
+                type="date" 
+                id="date" 
+                name="date"
+            >
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-large">💾 Save Quote</button>
+    </form>
+</div>

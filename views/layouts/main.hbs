@@ -5,19 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{title}} - Quotebox</title>
     <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
 </head>
 <body>
     <nav>
-        <div class="nav-container">
-            <h1 class="logo">📦 Quotebox</h1>
-            <ul class="nav-links">
-                <li><a href="/">Home</a></li>
-                <li><a href="/add-quote">Add Quote</a></li>
-                <li><a href="/stats">Stats</a></li>
-                <li><a href="/game">Play Game</a></li>
-            </ul>
-        </div>
-    </nav>
+    <div class="nav-container">
+        <h1 class="logo">📦 Quotebox</h1>
+        <ul class="nav-links">
+            <li><a href="/home">Home</a></li>
+            <li><a href="/add-quote">Add Quote</a></li>
+            <li><a href="/stats">Stats</a></li>
+            <li><a href="/game">Play Game</a></li>
+            {{#if username}}
+                <li style="color: #666; font-weight: 600;">👤 {{username}}</li>
+                <li><a href="/logout" style="color: #ef4444;">Logout</a></li>
+            {{/if}}
+        </ul>
+    </div>
+</nav>
     
     <main>
         {{{body}}}

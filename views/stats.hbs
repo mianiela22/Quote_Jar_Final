@@ -1,0 +1,135 @@
+<div class="container">
+    <div class="page-header">
+        <h1>📊 Statistics</h1>
+        <a href="/" class="btn btn-secondary">← Back to Quotes</a>
+    </div>
+
+    <div class="stats-container">
+        <div class="chart-card">
+            <h2>🏆 Funniest Person</h2>
+            <canvas id="personChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>📅 Funniest Month</h2>
+            <canvas id="monthChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Get the quotes data from the server
+    const quotesData = {{{quotesJSON}}};
+    
+    // Process data for "Funniest Person" chart
+    const personCounts = {};
+    quotesData.forEach(quote => {
+        if (personCounts[quote.personName]) {
+            personCounts[quote.personName]++;
+        } else {
+            personCounts[quote.personName] = 1;
+        }
+    });
+    
+    const personNames = Object.keys(personCounts);
+    const personQuoteCounts = Object.values(personCounts);
+    
+    // Create "Funniest Person" bar chart
+    const personCtx = document.getElementById('personChart').getContext('2d');
+    new Chart(personCtx, {
+        type: 'bar',
+        data: {
+            labels: personNames,
+            datasets: [{
+                label: 'Number of Quotes',
+                data: personQuoteCounts,
+                backgroundColor: [
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(118, 75, 162, 0.8)',
+                    'rgba(237, 100, 166, 0.8)',
+                    'rgba(255, 154, 158, 0.8)',
+                    'rgba(250, 208, 196, 0.8)',
+                    'rgba(255, 212, 143, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(102, 126, 234, 1)',
+                    'rgba(118, 75, 162, 1)',
+                    'rgba(237, 100, 166, 1)',
+                    'rgba(255, 154, 158, 1)',
+                    'rgba(250, 208, 196, 1)',
+                    'rgba(255, 212, 143, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Process data for "Funniest Month" chart
+    const monthCounts = {};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    quotesData.forEach(quote => {
+        if (quote.date) {
+            const date = new Date(quote.date);
+            const month = monthNames[date.getMonth()];
+            if (monthCounts[month]) {
+                monthCounts[month]++;
+            } else {
+                monthCounts[month] = 1;
+            }
+        }
+    });
+    
+    const months = Object.keys(monthCounts);
+    const monthQuoteCounts = Object.values(monthCounts);
+    
+    // Create "Funniest Month" bar chart
+    const monthCtx = document.getElementById('monthChart').getContext('2d');
+    new Chart(monthCtx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Number of Quotes',
+                data: monthQuoteCounts,
+                backgroundColor: 'rgba(237, 100, 166, 0.8)',
+                borderColor: 'rgba(237, 100, 166, 1)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+</script>
