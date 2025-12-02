@@ -1,0 +1,41 @@
+<div class="container">
+    <div class="page-header">
+        <h1>📦 Your Quote Collection</h1>
+        <a href="/add-quote" class="btn btn-primary">+ Add New Quote</a>
+    </div>
+
+    {{#if quotes.length}}
+        <div class="quotes-grid">
+            {{#each quotes}}
+                <div class="quote-card">
+                    <div class="quote-content">
+                        <p class="quote-text">"{{this.quoteText}}"</p>
+                    </div>
+                    <div class="quote-footer">
+                        <div class="quote-meta">
+                            <p class="person-name">— {{this.personName}}</p>
+                            {{#if this.location}}
+                                <p class="location">📍 {{this.location}}</p>
+                            {{/if}}
+                            {{#if this.date}}
+                                <p class="date">📅 {{this.date}}</p>
+                            {{/if}}
+                        </div>
+                        <div class="quote-actions">
+                            <a href="/quotes/{{this.id}}/edit" class="btn-small btn-edit">Edit</a>
+                            <form action="/quotes/{{this.id}}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this quote?');">
+                                <button type="submit" class="btn-small btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {{/each}}
+        </div>
+    {{else}}
+        <div class="empty-state">
+            <h2>No quotes yet! 🎭</h2>
+            <p>Start collecting the funniest moments of your life.</p>
+            <a href="/add-quote" class="btn btn-primary">Add Your First Quote</a>
+        </div>
+    {{/if}}
+</div>
