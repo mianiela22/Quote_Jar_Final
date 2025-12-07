@@ -12,14 +12,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('public'));
 
-// Session middleware
+// Session middleware - FIXED for production
 app.use(session({
     secret: process.env.SESSION_SECRET || 'quotebox-secret-key-2024',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,  // Changed to true
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        secure: false,  // Changed to false
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax'  // Added this
     }
 }));
 
@@ -121,18 +123,34 @@ app.post('/login', async (req, res) => {
     try {
         const { username } = req.body;
         
+        console.log('Login attempt for username:', username); // DEBUG
+        
         // Find or create user
         let user = await User.findOne({ where: { username: username } });
         
         if (!user) {
             user = await User.create({ username: username });
+            console.log('Created new user:', user.username); // DEBUG
+        } else {
+            console.log('Found existing user:', user.username); // DEBUG
         }
         
         // Set session
         req.session.userId = user.id;
         req.session.username = user.username;
         
-        res.redirect('/home');
+        console.log('Session set:', req.session); // DEBUG
+        
+        // Save session explicitly before redirect
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).send('Session error');
+            }
+            console.log('Session saved, redirecting to /home'); // DEBUG
+            res.redirect('/home');
+        });
+        
     } catch (error) {
         console.error('Error logging in:', error);
         res.status(500).send('Error logging in');
