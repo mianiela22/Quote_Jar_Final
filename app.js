@@ -5,7 +5,7 @@ const session = require('express-session');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
@@ -14,9 +14,13 @@ app.use(express.static('public'));
 
 // Session middleware
 app.use(session({
-    secret: 'quotebox-secret-key-2024',
+    secret: process.env.SESSION_SECRET || 'quotebox-secret-key-2024',
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
 }));
 
 // Handlebars setup
@@ -31,11 +35,21 @@ app.engine('hbs', engine({
 app.set('view engine', 'hbs');
 app.set('views', './views');
 
-// Database setup
-const sequelize = new Sequelize({
-    dialect: 'sqlite',
-    storage: './quotebox.sqlite'
-});
+// Database setup - works for both local and production
+const sequelize = process.env.DATABASE_URL
+    ? new Sequelize(process.env.DATABASE_URL, {
+        dialect: 'postgres',
+        dialectOptions: {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false
+            }
+        }
+    })
+    : new Sequelize({
+        dialect: 'sqlite',
+        storage: './quotebox.sqlite'
+    });
 
 // Test database connection
 sequelize.authenticate()
@@ -75,8 +89,10 @@ const Quote = sequelize.define('Quote', {
 Quote.belongsTo(User);
 User.hasMany(Quote);
 
-// Sync database (alter will update existing tables)
-sequelize.sync({ alter: true });
+// Sync database
+sequelize.sync({ alter: process.env.NODE_ENV !== 'production' })
+    .then(() => console.log('Database synced'))
+    .catch(err => console.error('Database sync error:', err));
 
 // ==================== ROUTES ====================
 
