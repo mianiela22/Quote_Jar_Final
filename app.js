@@ -381,6 +381,14 @@ app.get('/word-cloud', requireLogin, async (req, res) => {
     }
 });
 
+// ABOUT PAGE - Explains the concept and how to use
+app.get('/about', (req, res) => {
+    res.render('about', { 
+        title: 'About Quotebox',
+        username: req.session.username
+    });
+});
+
 // GAME PAGE - Quiz mode for user's quotes
 app.get('/game', requireLogin, async (req, res) => {
     try {
