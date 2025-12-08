@@ -16,12 +16,12 @@ app.use(express.static('public'));
 app.use(session({
     secret: process.env.SESSION_SECRET || 'quotebox-secret-key-2024',
     resave: false,
-    saveUninitialized: true,  // Changed to true
+    saveUninitialized: true,
     cookie: {
-        secure: false,  // Changed to false
+        secure: false,
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'lax'  // Added this
+        sameSite: 'lax'
     }
 }));
 
@@ -114,7 +114,7 @@ app.get('/', (req, res) => {
     }
     res.render('landing', { 
         title: 'Welcome',
-        layout: false  // No nav bar on landing page
+        layout: false
     });
 });
 
@@ -123,23 +123,23 @@ app.post('/login', async (req, res) => {
     try {
         const { username } = req.body;
         
-        console.log('Login attempt for username:', username); // DEBUG
+        console.log('Login attempt for username:', username);
         
         // Find or create user
         let user = await User.findOne({ where: { username: username } });
         
         if (!user) {
             user = await User.create({ username: username });
-            console.log('Created new user:', user.username); // DEBUG
+            console.log('Created new user:', user.username);
         } else {
-            console.log('Found existing user:', user.username); // DEBUG
+            console.log('Found existing user:', user.username);
         }
         
         // Set session
         req.session.userId = user.id;
         req.session.username = user.username;
         
-        console.log('Session set:', req.session); // DEBUG
+        console.log('Session set:', req.session);
         
         // Save session explicitly before redirect
         req.session.save((err) => {
@@ -147,7 +147,7 @@ app.post('/login', async (req, res) => {
                 console.error('Session save error:', err);
                 return res.status(500).send('Session error');
             }
-            console.log('Session saved, redirecting to /home'); // DEBUG
+            console.log('Session saved, redirecting to /home');
             res.redirect('/home');
         });
         
@@ -182,17 +182,51 @@ app.get('/home', requireLogin, async (req, res) => {
 });
 
 // ADD QUOTE PAGE - Show the form
-app.get('/add-quote', requireLogin, (req, res) => {
-    res.render('add-quote', { 
-        title: 'Add New Quote',
-        username: req.session.username
-    });
+app.get('/add-quote', requireLogin, async (req, res) => {
+    try {
+        // Get all quotes from this user
+        const quotes = await Quote.findAll({
+            where: { UserId: req.session.userId },
+            attributes: ['personName']
+        });
+        
+        // Extract unique person names manually
+        const peopleSet = new Set(quotes.map(q => q.personName));
+        const people = Array.from(peopleSet).sort();
+        
+        res.render('add-quote', { 
+            title: 'Add New Quote',
+            username: req.session.username,
+            people: people
+        });
+    } catch (error) {
+        console.error('Error loading add quote page:', error);
+        res.render('add-quote', { 
+            title: 'Add New Quote',
+            username: req.session.username,
+            people: []
+        });
+    }
 });
 
 // ADD QUOTE - Process the form
 app.post('/add-quote', requireLogin, async (req, res) => {
     try {
         const { quoteText, personName, location, date } = req.body;
+        
+        console.log('Form data received:', req.body); // DEBUG
+        console.log('Person name:', personName); // DEBUG
+        console.log('Quote text:', quoteText); // DEBUG
+        
+        if (!personName || personName.trim() === '') {
+            console.error('ERROR: No person name provided!');
+            return res.status(400).send('Person name is required');
+        }
+        
+        if (!quoteText || quoteText.trim() === '') {
+            console.error('ERROR: No quote text provided!');
+            return res.status(400).send('Quote text is required');
+        }
         
         await Quote.create({
             quoteText: quoteText,
@@ -202,10 +236,11 @@ app.post('/add-quote', requireLogin, async (req, res) => {
             UserId: req.session.userId
         });
         
+        console.log('Quote created successfully!'); // DEBUG
         res.redirect('/home');
     } catch (error) {
         console.error('Error creating quote:', error);
-        res.status(500).send('Error adding quote');
+        res.status(500).send('Error adding quote: ' + error.message);
     }
 });
 
@@ -215,7 +250,7 @@ app.post('/quotes/:id/delete', requireLogin, async (req, res) => {
         await Quote.destroy({
             where: { 
                 id: req.params.id,
-                UserId: req.session.userId  // Only delete if it belongs to this user
+                UserId: req.session.userId
             }
         });
         res.redirect('/home');
@@ -237,10 +272,22 @@ app.get('/quotes/:id/edit', requireLogin, async (req, res) => {
         if (!quote) {
             return res.status(404).send('Quote not found');
         }
+        
+        // Get all quotes from this user
+        const quotes = await Quote.findAll({
+            where: { UserId: req.session.userId },
+            attributes: ['personName']
+        });
+        
+        // Extract unique person names manually
+        const peopleSet = new Set(quotes.map(q => q.personName));
+        const people = Array.from(peopleSet).sort();
+        
         res.render('edit-quote', { 
             title: 'Edit Quote',
             quote: quote,
-            username: req.session.username
+            username: req.session.username,
+            people: people
         });
     } catch (error) {
         console.error('Error fetching quote:', error);
@@ -342,7 +389,6 @@ app.post('/bulk-upload', requireLogin, async (req, res) => {
                 line = line.replace(/^\d+\.\s*/, '').trim();
                 
                 // Parse quote and person
-                // Format: "Quote text" -Person Name OR Quote text -Person Name
                 const quoteMatch = line.match(/[""](.+?)[""]?\s*-\s*(.+)/);
                 
                 if (quoteMatch) {
