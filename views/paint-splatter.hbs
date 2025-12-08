@@ -1,0 +1,185 @@
+<div class="container">
+    <div class="page-header">
+        <h1>🎨 Quote Paint Splatter</h1>
+        <a href="/home" class="btn btn-secondary">← Back to Home</a>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <p style="font-size: 1.1rem; color: #666;">
+            Each splatter represents a quote - size shows length, color shows person. Hover to see the quote!
+        </p>
+        <button id="regenerateBtn" class="btn btn-primary" style="margin-top: 1rem;">
+            🎲 Regenerate Art
+        </button>
+    </div>
+
+    <div id="p5-container" style="display: flex; justify-content: center;"></div>
+    
+    <div id="hoverQuote" style="text-align: center; margin-top: 2rem; font-size: 1.1rem; color: #666; min-height: 60px; font-style: italic;"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+
+<script>
+    const quotesData = {{{quotesJSON}}};
+    
+    // Get unique people and assign colors
+    const peopleSet = new Set(quotesData.map(q => q.personName));
+    const people = Array.from(peopleSet);
+    
+    const personColors = {};
+    const colors = [
+        [147, 51, 234],   // Purple
+        [59, 130, 246],   // Blue
+        [236, 72, 153],   // Pink
+        [34, 197, 94],    // Green
+        [251, 146, 60],   // Orange
+        [168, 85, 247],   // Violet
+        [14, 165, 233],   // Sky
+        [244, 63, 94],    // Rose
+        [16, 185, 129],   // Emerald
+        [245, 158, 11]    // Amber
+    ];
+    
+    people.forEach((person, i) => {
+        personColors[person] = colors[i % colors.length];
+    });
+    
+    let mySketch = null;
+    
+    function createSplatterArt() {
+        if (mySketch) {
+            mySketch.remove();
+        }
+        
+        const s = (p) => {
+            const canvasWidth = 1000;
+            const canvasHeight = 700;
+            let splatters = [];
+            let hoveredSplatter = null;
+            
+            class Splatter {
+                constructor(quote) {
+                    this.quote = quote;
+                    this.x = p.random(100, canvasWidth - 100);
+                    this.y = p.random(100, canvasHeight - 100);
+                    this.size = p.map(quote.quoteText.length, 0, 200, 30, 150);
+                    this.color = personColors[quote.personName] || [100, 100, 100];
+                    this.alpha = p.random(150, 200);
+                    this.splats = [];
+                    
+                    // Create random splat shapes around center
+                    const numSplats = p.floor(p.random(5, 12));
+                    for (let i = 0; i < numSplats; i++) {
+                        const angle = p.random(p.TWO_PI);
+                        const distance = p.random(this.size * 0.3, this.size * 0.7);
+                        const splatSize = p.random(this.size * 0.2, this.size * 0.5);
+                        this.splats.push({
+                            x: p.cos(angle) * distance,
+                            y: p.sin(angle) * distance,
+                            size: splatSize
+                        });
+                    }
+                }
+                
+                display() {
+                    p.push();
+                    p.translate(this.x, this.y);
+                    
+                    // Draw main splatter
+                    p.fill(this.color[0], this.color[1], this.color[2], this.alpha);
+                    p.noStroke();
+                    p.circle(0, 0, this.size);
+                    
+                    // Draw splat droplets
+                    this.splats.forEach(splat => {
+                        p.fill(this.color[0], this.color[1], this.color[2], this.alpha * 0.8);
+                        p.circle(splat.x, splat.y, splat.size);
+                    });
+                    
+                    p.pop();
+                    
+                    // Highlight if hovered
+                    if (hoveredSplatter === this) {
+                        p.push();
+                        p.noFill();
+                        p.stroke(255, 255, 255, 200);
+                        p.strokeWeight(3);
+                        p.circle(this.x, this.y, this.size + 10);
+                        p.pop();
+                    }
+                }
+                
+                contains(mx, my) {
+                    const d = p.dist(mx, my, this.x, this.y);
+                    return d < this.size / 2;
+                }
+            }
+            
+            p.setup = () => {
+                const canvas = p.createCanvas(canvasWidth, canvasHeight);
+                canvas.parent('p5-container');
+                
+                // Create splatters for each quote
+                quotesData.forEach(quote => {
+                    splatters.push(new Splatter(quote));
+                });
+            };
+            
+            p.draw = () => {
+                // Gradient background
+                for (let y = 0; y < canvasHeight; y++) {
+                    const inter = p.map(y, 0, canvasHeight, 0, 1);
+                    const c = p.lerpColor(p.color(240, 240, 245), p.color(255, 255, 255), inter);
+                    p.stroke(c);
+                    p.line(0, y, canvasWidth, y);
+                }
+                
+                // Check hover
+                hoveredSplatter = null;
+                for (let splatter of splatters) {
+                    if (splatter.contains(p.mouseX, p.mouseY)) {
+                        hoveredSplatter = splatter;
+                        break;
+                    }
+                }
+                
+                // Draw all splatters
+                splatters.forEach(splatter => splatter.display());
+                
+                // Update hover text
+                if (hoveredSplatter) {
+                    document.getElementById('hoverQuote').textContent = 
+                        `"${hoveredSplatter.quote.quoteText}" - ${hoveredSplatter.quote.personName}`;
+                } else {
+                    document.getElementById('hoverQuote').textContent = 
+                        'Hover over splatters to see quotes';
+                }
+            };
+        };
+        
+        mySketch = new p5(s);
+    }
+    
+    // Create initial art
+    createSplatterArt();
+    
+    // Regenerate button
+    document.getElementById('regenerateBtn').addEventListener('click', createSplatterArt);
+</script>
+
+<style>
+canvas {
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#hoverQuote {
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+    max-width: 800px;
+    margin: 2rem auto;
+}
+</style>

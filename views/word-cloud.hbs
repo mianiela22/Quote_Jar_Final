@@ -1,0 +1,161 @@
+<div class="container">
+    <div class="page-header">
+        <h1>☁️ Animated Word Cloud</h1>
+        <a href="/home" class="btn btn-secondary">← Back to Home</a>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <p style="font-size: 1.1rem; color: #666;">
+            Most common words from your quotes bounce around - bigger = more frequent!
+        </p>
+    </div>
+
+    <div id="p5-container" style="display: flex; justify-content: center;"></div>
+    
+    <div id="wordInfo" style="text-align: center; margin-top: 2rem; font-size: 1.1rem; color: #666; min-height: 40px;"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+
+<script>
+    const quotesData = {{{quotesJSON}}};
+    
+    // Extract all words and count frequency
+    const wordCounts = {};
+    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'was', 'are', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'can', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'them', 'their', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our']);
+    
+    quotesData.forEach(quote => {
+        const words = quote.quoteText.toLowerCase().match(/\b\w+\b/g) || [];
+        words.forEach(word => {
+            if (word.length > 3 && !stopWords.has(word)) {
+                wordCounts[word] = (wordCounts[word] || 0) + 1;
+            }
+        });
+    });
+    
+    // Get top 30 words
+    const sortedWords = Object.entries(wordCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 30);
+    
+    const s = (p) => {
+        const canvasWidth = 1000;
+        const canvasHeight = 700;
+        let words = [];
+        let hoveredWord = null;
+        
+        class Word {
+            constructor(text, count) {
+                this.text = text;
+                this.count = count;
+                this.x = p.random(50, canvasWidth - 50);
+                this.y = p.random(50, canvasHeight - 50);
+                this.size = p.map(count, 1, Math.max(...sortedWords.map(w => w[1])), 20, 80);
+                this.vx = p.random(-1, 1);
+                this.vy = p.random(-1, 1);
+                this.color = p.color(
+                    p.random(100, 200),
+                    p.random(50, 150),
+                    p.random(150, 255)
+                );
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Bounce off edges
+                if (this.x < this.size || this.x > canvasWidth - this.size) {
+                    this.vx *= -1;
+                }
+                if (this.y < this.size || this.y > canvasHeight - this.size) {
+                    this.vy *= -1;
+                }
+                
+                // Keep in bounds
+                this.x = p.constrain(this.x, this.size, canvasWidth - this.size);
+                this.y = p.constrain(this.y, this.size, canvasHeight - this.size);
+            }
+            
+            display() {
+                p.push();
+                
+                // Highlight if hovered
+                if (hoveredWord === this) {
+                    p.fill(255, 255, 0, 100);
+                    p.noStroke();
+                    p.circle(this.x, this.y, this.size + 20);
+                }
+                
+                p.fill(this.color);
+                p.textSize(this.size);
+                p.textAlign(p.CENTER, p.CENTER);
+                p.textStyle(p.BOLD);
+                p.text(this.text, this.x, this.y);
+                
+                p.pop();
+            }
+            
+            contains(mx, my) {
+                const w = p.textWidth(this.text);
+                const h = this.size;
+                return mx > this.x - w/2 && mx < this.x + w/2 &&
+                       my > this.y - h/2 && my < this.y + h/2;
+            }
+        }
+        
+        p.setup = () => {
+            const canvas = p.createCanvas(canvasWidth, canvasHeight);
+            canvas.parent('p5-container');
+            
+            // Create word objects
+            sortedWords.forEach(([word, count]) => {
+                words.push(new Word(word, count));
+            });
+        };
+        
+        p.draw = () => {
+            p.background(255);
+            
+            // Check hover
+            hoveredWord = null;
+            for (let word of words) {
+                if (word.contains(p.mouseX, p.mouseY)) {
+                    hoveredWord = word;
+                    break;
+                }
+            }
+            
+            // Update and display words
+            words.forEach(word => {
+                word.update();
+                word.display();
+            });
+            
+            // Update info text
+            if (hoveredWord) {
+                document.getElementById('wordInfo').textContent = 
+                    `"${hoveredWord.text}" appears ${hoveredWord.count} time${hoveredWord.count > 1 ? 's' : ''}`;
+            } else {
+                document.getElementById('wordInfo').textContent = 
+                    'Hover over words to see frequency';
+            }
+        };
+    };
+    
+    new p5(s);
+</script>
+
+<style>
+canvas {
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#wordInfo {
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+</style>

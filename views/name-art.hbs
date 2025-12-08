@@ -1,0 +1,256 @@
+<div class="container">
+    <div class="page-header">
+        <h1>🎨 Quote Name Art</h1>
+        <a href="/home" class="btn btn-secondary">← Back to Home</a>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <p style="font-size: 1.1rem; color: #666;">
+            Select a person to see their quotes with letters spelling their name!
+        </p>
+        
+        <div style="margin: 2rem auto; max-width: 400px;">
+            <label for="personSelect" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Choose a Person:</label>
+            <select id="personSelect" style="width: 100%; padding: 0.75rem; font-size: 1rem; border-radius: 6px; border: 2px solid #e5e5e5;">
+                <option value="">-- Select someone --</option>
+                {{#each people}}
+                    <option value="{{this}}">{{this}}</option>
+                {{/each}}
+            </select>
+        </div>
+    </div>
+
+    <div id="p5-container" style="display: flex; justify-content: center;"></div>
+    
+    <div id="message" style="text-align: center; margin-top: 2rem; font-size: 1.1rem; color: #999;"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+
+<script>
+    const quotesData = {{{quotesJSON}}};
+    const personSelect = document.getElementById('personSelect');
+    const messageDiv = document.getElementById('message');
+    
+    let currentSketch = null;
+    
+    personSelect.addEventListener('change', function() {
+        const selectedPerson = this.value;
+        
+        if (!selectedPerson) {
+            messageDiv.textContent = '';
+            if (currentSketch) {
+                currentSketch.remove();
+                currentSketch = null;
+            }
+            return;
+        }
+        
+        // Get quotes for selected person
+        const personQuotes = quotesData.filter(q => q.personName === selectedPerson);
+        
+        if (personQuotes.length === 0) {
+            messageDiv.textContent = 'No quotes found for this person!';
+            return;
+        }
+        
+        // Remove old sketch
+        if (currentSketch) {
+            currentSketch.remove();
+        }
+        
+        // Create name art
+        createNameArt(selectedPerson, personQuotes);
+    });
+    
+    function createNameArt(personName, quotes) {
+        const name = personName.toUpperCase();
+        const nameLetters = name.split('');
+        
+        // Try to find quotes for each letter
+        const matchedQuotes = [];
+        const usedIndices = new Set();
+        
+        for (let letter of nameLetters) {
+            let found = false;
+            
+            // Try to find a quote with this letter that hasn't been used
+            for (let i = 0; i < quotes.length; i++) {
+                if (usedIndices.has(i)) continue;
+                
+                const quoteText = quotes[i].quoteText.toUpperCase();
+                if (quoteText.includes(letter)) {
+                    // Find position of letter in quote
+                    const position = quoteText.indexOf(letter);
+                    
+                    matchedQuotes.push({
+                        text: quotes[i].quoteText,
+                        letter: letter,
+                        position: position,
+                        hasQuote: true
+                    });
+                    
+                    usedIndices.add(i);
+                    found = true;
+                    break;
+                }
+            }
+            
+            // If no quote found, just show the letter
+            if (!found) {
+                matchedQuotes.push({
+                    text: '',
+                    letter: letter,
+                    position: 0,
+                    hasQuote: false
+                });
+            }
+        }
+        
+        // Create P5 sketch
+        const s = (p) => {
+            const canvasWidth = 1200;
+            const lineHeight = 60;
+            const canvasHeight = Math.max(500, matchedQuotes.length * lineHeight + 150);
+            const fontSize = 18;
+            const letterSize = 32;
+            const centerX = 500; // Center column position
+            const maxLineWidth = 600; // Maximum width for text wrapping
+            
+            p.setup = () => {
+                const canvas = p.createCanvas(canvasWidth, canvasHeight);
+                canvas.parent('p5-container');
+                p.textAlign(p.LEFT, p.TOP);
+                p.textFont('monospace');
+            };
+            
+            p.draw = () => {
+                p.background(255);
+                
+                // Title
+                p.fill(26, 26, 26);
+                p.textSize(36);
+                p.textStyle(p.BOLD);
+                p.text(personName, 50, 30);
+                
+                // Draw each quote
+                let y = 100;
+                
+                matchedQuotes.forEach((item, index) => {
+                    const quoteText = item.text;
+                    const letter = item.letter;
+                    const letterPos = item.position;
+                    const hasQuote = item.hasQuote;
+                    
+                    if (hasQuote) {
+                        const textBeforeLetter = quoteText.substring(0, letterPos);
+                        const textAfterLetter = quoteText.substring(letterPos + 1);
+                        const highlightedChar = quoteText[letterPos];
+                        
+                        // Set text properties for measuring
+                        p.textSize(fontSize);
+                        p.textStyle(p.NORMAL);
+                        
+                        // Calculate if we need to truncate
+                        const beforeWidth = p.textWidth(textBeforeLetter);
+                        const afterWidth = p.textWidth(textAfterLetter);
+                        
+                        let displayBefore = textBeforeLetter;
+                        let displayAfter = textAfterLetter;
+                        
+                        // Truncate left side if too long
+                        if (beforeWidth > maxLineWidth / 2) {
+                            displayBefore = '...' + textBeforeLetter.substring(textBeforeLetter.length - 50);
+                        }
+                        
+                        // Truncate right side if too long
+                        if (afterWidth > maxLineWidth / 2) {
+                            displayAfter = textAfterLetter.substring(0, 50) + '...';
+                        }
+                        
+                        const finalBeforeWidth = p.textWidth(displayBefore);
+                        
+                        // Draw text before the letter (to the left)
+                        p.fill(60);
+                        p.textSize(fontSize);
+                        p.textStyle(p.NORMAL);
+                        p.text(displayBefore, centerX - finalBeforeWidth, y + 6);
+                        
+                        // Draw background highlight box for the letter
+                        p.push();
+                        p.fill(147, 51, 234, 80);
+                        p.noStroke();
+                        p.rect(centerX - 5, y - 5, letterSize + 5, letterSize + 10, 6);
+                        p.pop();
+                        
+                        // Draw the highlighted letter
+                        p.fill(147, 51, 234);
+                        p.textSize(letterSize);
+                        p.textStyle(p.BOLD);
+                        p.text(highlightedChar, centerX, y);
+                        
+                        // Draw text after the letter (to the right)
+                        p.fill(60);
+                        p.textSize(fontSize);
+                        p.textStyle(p.NORMAL);
+                        p.text(displayAfter, centerX + letterSize, y + 6);
+                        
+                    } else {
+                        // No quote found - just show the letter at center
+                        p.push();
+                        p.fill(147, 51, 234, 80);
+                        p.noStroke();
+                        p.rect(centerX - 5, y - 5, letterSize + 5, letterSize + 10, 6);
+                        p.pop();
+                        
+                        p.fill(147, 51, 234);
+                        p.textSize(letterSize);
+                        p.textStyle(p.BOLD);
+                        p.text(letter, centerX, y);
+                        
+                        // Draw dash to indicate no quote
+                        p.fill(150);
+                        p.textSize(fontSize);
+                        p.textStyle(p.ITALIC);
+                        p.text('—', centerX + letterSize + 10, y + 6);
+                    }
+                    
+                    y += lineHeight;
+                });
+                
+                // Draw vertical line through the center to show alignment
+                p.stroke(147, 51, 234, 100);
+                p.strokeWeight(2);
+                p.line(centerX + letterSize/2, 90, centerX + letterSize/2, y - 20);
+                
+                p.noLoop();
+            };
+        };
+        
+        currentSketch = new p5(s);
+        
+        const quotesWithLetters = matchedQuotes.filter(q => q.hasQuote).length;
+        messageDiv.textContent = `${quotesWithLetters} out of ${name.length} letters matched with quotes`;
+    }
+</script>
+
+<style>
+#personSelect {
+    background: white;
+    cursor: pointer;
+}
+
+#personSelect:focus {
+    outline: none;
+    border-color: rgba(147, 51, 234, 0.5);
+    box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+}
+
+canvas {
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background: white;
+}
+</style>
+```

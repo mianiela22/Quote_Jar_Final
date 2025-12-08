@@ -214,20 +214,6 @@ app.post('/add-quote', requireLogin, async (req, res) => {
     try {
         const { quoteText, personName, location, date } = req.body;
         
-        console.log('Form data received:', req.body); // DEBUG
-        console.log('Person name:', personName); // DEBUG
-        console.log('Quote text:', quoteText); // DEBUG
-        
-        if (!personName || personName.trim() === '') {
-            console.error('ERROR: No person name provided!');
-            return res.status(400).send('Person name is required');
-        }
-        
-        if (!quoteText || quoteText.trim() === '') {
-            console.error('ERROR: No quote text provided!');
-            return res.status(400).send('Quote text is required');
-        }
-        
         await Quote.create({
             quoteText: quoteText,
             personName: personName,
@@ -236,11 +222,10 @@ app.post('/add-quote', requireLogin, async (req, res) => {
             UserId: req.session.userId
         });
         
-        console.log('Quote created successfully!'); // DEBUG
         res.redirect('/home');
     } catch (error) {
         console.error('Error creating quote:', error);
-        res.status(500).send('Error adding quote: ' + error.message);
+        res.status(500).send('Error adding quote');
     }
 });
 
@@ -333,6 +318,66 @@ app.get('/stats', requireLogin, async (req, res) => {
     } catch (error) {
         console.error('Error fetching stats:', error);
         res.status(500).send('Error loading stats');
+    }
+});
+
+// NAME ART PAGE - P5.js quote puzzle
+app.get('/name-art', requireLogin, async (req, res) => {
+    try {
+        // Get all quotes from this user
+        const quotes = await Quote.findAll({
+            where: { UserId: req.session.userId }
+        });
+        
+        // Get unique person names
+        const peopleSet = new Set(quotes.map(q => q.personName));
+        const people = Array.from(peopleSet).sort();
+        
+        res.render('name-art', { 
+            title: 'Name Art',
+            username: req.session.username,
+            people: people,
+            quotesJSON: JSON.stringify(quotes)
+        });
+    } catch (error) {
+        console.error('Error loading name art:', error);
+        res.status(500).send('Error loading name art');
+    }
+});
+
+// PAINT SPLATTER PAGE - P5.js paint art
+app.get('/paint-splatter', requireLogin, async (req, res) => {
+    try {
+        const quotes = await Quote.findAll({
+            where: { UserId: req.session.userId }
+        });
+        
+        res.render('paint-splatter', { 
+            title: 'Paint Splatter Art',
+            username: req.session.username,
+            quotesJSON: JSON.stringify(quotes)
+        });
+    } catch (error) {
+        console.error('Error loading paint splatter:', error);
+        res.status(500).send('Error loading paint splatter');
+    }
+});
+
+// WORD CLOUD PAGE - P5.js word cloud
+app.get('/word-cloud', requireLogin, async (req, res) => {
+    try {
+        const quotes = await Quote.findAll({
+            where: { UserId: req.session.userId }
+        });
+        
+        res.render('word-cloud', { 
+            title: 'Word Cloud',
+            username: req.session.username,
+            quotesJSON: JSON.stringify(quotes)
+        });
+    } catch (error) {
+        console.error('Error loading word cloud:', error);
+        res.status(500).send('Error loading word cloud');
     }
 });
 
