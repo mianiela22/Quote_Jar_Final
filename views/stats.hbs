@@ -1,18 +1,47 @@
 <div class="container">
     <div class="page-header">
         <h1>📊 Statistics</h1>
-        <a href="/" class="btn btn-secondary">← Back to Quotes</a>
+        <a href="/home" class="btn btn-secondary">← Back to Quotes</a>
+    </div>
+
+    <div class="stats-summary">
+        <div class="stat-box">
+            <h3 id="total-quotes">0</h3>
+            <p>Total Quotes</p>
+        </div>
+        <div class="stat-box">
+            <h3 id="total-people">0</h3>
+            <p>People Quoted</p>
+        </div>
+        <div class="stat-box">
+            <h3 id="funniest-person">-</h3>
+            <p>Funniest Person</p>
+        </div>
     </div>
 
     <div class="stats-container">
         <div class="chart-card">
-            <h2>🏆 Funniest Person</h2>
-            <canvas id="personChart"></canvas>
+            <h2>🏆 Top 5 Funniest People</h2>
+            <div class="chart-wrapper">
+                <canvas id="personChart"></canvas>
+            </div>
         </div>
 
         <div class="chart-card">
-            <h2>📅 Funniest Month</h2>
-            <canvas id="monthChart"></canvas>
+            <h2>📅 Quotes by Month</h2>
+            <div class="chart-wrapper">
+                <canvas id="monthChart"></canvas>
+            </div>
+            <p style="text-align: center; color: #999; margin-top: 1rem; font-size: 0.9rem;">
+                Only showing quotes with dates
+            </p>
+        </div>
+    </div>
+
+    <div class="chart-card" style="margin-top: 2rem;">
+        <h2>📋 Everyone's Quote Count</h2>
+        <div class="person-list">
+            <!-- Will be populated by JavaScript -->
         </div>
     </div>
 </div>
@@ -31,10 +60,20 @@
         }
     });
     
-    const personNames = Object.keys(personCounts);
-    const personQuoteCounts = Object.values(personCounts);
+    // Sort by count and get top 5
+    const sortedPeople = Object.entries(personCounts)
+        .sort((a, b) => b[1] - a[1]);
     
-    // Create "Funniest Person" bar chart
+    const top5People = sortedPeople.slice(0, 5);
+    const personNames = top5People.map(p => p[0]);
+    const personQuoteCounts = top5People.map(p => p[1]);
+    
+    // Update summary stats
+    document.getElementById('total-quotes').textContent = quotesData.length;
+    document.getElementById('total-people').textContent = Object.keys(personCounts).length;
+    document.getElementById('funniest-person').textContent = sortedPeople[0] ? sortedPeople[0][0] : '-';
+    
+    // Create "Top 5 Funniest People" bar chart
     const personCtx = document.getElementById('personChart').getContext('2d');
     new Chart(personCtx, {
         type: 'bar',
@@ -43,22 +82,8 @@
             datasets: [{
                 label: 'Number of Quotes',
                 data: personQuoteCounts,
-                backgroundColor: [
-                    'rgba(102, 126, 234, 0.8)',
-                    'rgba(118, 75, 162, 0.8)',
-                    'rgba(237, 100, 166, 0.8)',
-                    'rgba(255, 154, 158, 0.8)',
-                    'rgba(250, 208, 196, 0.8)',
-                    'rgba(255, 212, 143, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(102, 126, 234, 1)',
-                    'rgba(118, 75, 162, 1)',
-                    'rgba(237, 100, 166, 1)',
-                    'rgba(255, 154, 158, 1)',
-                    'rgba(250, 208, 196, 1)',
-                    'rgba(255, 212, 143, 1)'
-                ],
+                backgroundColor: 'rgba(147, 51, 234, 0.8)',
+                borderColor: 'rgba(147, 51, 234, 1)',
                 borderWidth: 2
             }]
         },
@@ -69,7 +94,19 @@
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        color: '#666'
+                    },
+                    grid: {
+                        color: '#e5e5e5'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#666'
+                    },
+                    grid: {
+                        color: '#e5e5e5'
                     }
                 }
             },
@@ -109,8 +146,8 @@
             datasets: [{
                 label: 'Number of Quotes',
                 data: monthQuoteCounts,
-                backgroundColor: 'rgba(237, 100, 166, 0.8)',
-                borderColor: 'rgba(237, 100, 166, 1)',
+                backgroundColor: 'rgba(147, 51, 234, 0.8)',
+                borderColor: 'rgba(147, 51, 234, 1)',
                 borderWidth: 2
             }]
         },
@@ -121,7 +158,19 @@
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        color: '#666'
+                    },
+                    grid: {
+                        color: '#e5e5e5'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#666'
+                    },
+                    grid: {
+                        color: '#e5e5e5'
                     }
                 }
             },
@@ -132,4 +181,89 @@
             }
         }
     });
+    
+    // Create full person list
+    const personListDiv = document.querySelector('.person-list');
+    sortedPeople.forEach((person, index) => {
+        const personItem = document.createElement('div');
+        personItem.className = 'person-item';
+        personItem.innerHTML = `
+            <span class="person-rank">#${index + 1}</span>
+            <span class="person-name">${person[0]}</span>
+            <span class="person-count">${person[1]} quote${person[1] > 1 ? 's' : ''}</span>
+        `;
+        personListDiv.appendChild(personItem);
+    });
 </script>
+
+<style>
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.stat-box {
+    background: #f5f5f5;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #e5e5e5;
+}
+
+.stat-box h3 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+}
+
+.stat-box p {
+    color: #666;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.chart-wrapper {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.person-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.person-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 6px;
+    border: 1px solid #e5e5e5;
+}
+
+.person-rank {
+    font-weight: 800;
+    color: #999;
+    font-size: 1.1rem;
+    min-width: 40px;
+}
+
+.person-name {
+    flex: 1;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.person-count {
+    color: #666;
+    font-size: 0.9rem;
+}
+</style>

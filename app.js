@@ -317,6 +317,86 @@ app.get('/game', requireLogin, async (req, res) => {
     }
 });
 
+// BULK UPLOAD PAGE - Show the form
+app.get('/bulk-upload', requireLogin, (req, res) => {
+    res.render('bulk-upload', { 
+        title: 'Bulk Upload Quotes',
+        username: req.session.username
+    });
+});
+
+// BULK UPLOAD - Process the form
+app.post('/bulk-upload', requireLogin, async (req, res) => {
+    try {
+        const { quotesText } = req.body;
+        
+        // Split by lines and filter empty lines
+        const lines = quotesText.split('\n').filter(line => line.trim() !== '');
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (let line of lines) {
+            try {
+                // Remove numbering (1. 2. etc.) at the start
+                line = line.replace(/^\d+\.\s*/, '').trim();
+                
+                // Parse quote and person
+                // Format: "Quote text" -Person Name OR Quote text -Person Name
+                const quoteMatch = line.match(/[""](.+?)[""]?\s*-\s*(.+)/);
+                
+                if (quoteMatch) {
+                    const quoteText = quoteMatch[1].trim();
+                    const personName = quoteMatch[2].trim();
+                    
+                    await Quote.create({
+                        quoteText: quoteText,
+                        personName: personName,
+                        location: null,
+                        date: null,
+                        UserId: req.session.userId
+                    });
+                    
+                    successCount++;
+                } else {
+                    // Try simpler format without quotes: text -Person
+                    const simpleMatch = line.match(/(.+?)\s*-\s*(.+)/);
+                    if (simpleMatch) {
+                        const quoteText = simpleMatch[1].trim();
+                        const personName = simpleMatch[2].trim();
+                        
+                        await Quote.create({
+                            quoteText: quoteText,
+                            personName: personName,
+                            location: null,
+                            date: null,
+                            UserId: req.session.userId
+                        });
+                        
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                }
+            } catch (err) {
+                console.error('Error parsing line:', line, err);
+                errorCount++;
+            }
+        }
+        
+        res.render('bulk-upload-result', {
+            title: 'Upload Complete',
+            username: req.session.username,
+            successCount: successCount,
+            errorCount: errorCount
+        });
+        
+    } catch (error) {
+        console.error('Error bulk uploading:', error);
+        res.status(500).send('Error uploading quotes');
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Quotebox server running on http://localhost:${PORT}`);

@@ -1,7 +1,7 @@
 <div class="container">
     <div class="page-header">
         <h1>✨ Add New Quote</h1>
-        <a href="/" class="btn btn-secondary">← Back to Quotes</a>
+        <a href="/home" class="btn btn-secondary">← Back to Quotes</a>
     </div>
 
     <form action="/add-quote" method="POST" class="quote-form">
@@ -18,12 +18,20 @@
 
         <div class="form-group">
             <label for="personName">Who said it? *</label>
+            <select id="personSelect" name="personName" required>
+                <option value="">-- Select a person --</option>
+                {{#each people}}
+                    <option value="{{this}}">{{this}}</option>
+                {{/each}}
+                <option value="__new__">➕ Add New Person</option>
+            </select>
+            
             <input 
                 type="text" 
-                id="personName" 
-                name="personName" 
-                required
-                placeholder="Person's name"
+                id="newPersonInput" 
+                name="newPersonName" 
+                placeholder="Enter new person's name"
+                style="display: none; margin-top: 0.75rem;"
             >
         </div>
 
@@ -49,3 +57,21 @@
         <button type="submit" class="btn btn-primary btn-large">💾 Save Quote</button>
     </form>
 </div>
+
+<script>
+    // Show/hide new person input based on selection
+    const personSelect = document.getElementById('personSelect');
+    const newPersonInput = document.getElementById('newPersonInput');
+    
+    personSelect.addEventListener('change', function() {
+        if (this.value === '__new__') {
+            newPersonInput.style.display = 'block';
+            newPersonInput.required = true;
+            this.required = false;
+        } else {
+            newPersonInput.style.display = 'none';
+            newPersonInput.required = false;
+            this.required = true;
+        }
+    });
+</script>
